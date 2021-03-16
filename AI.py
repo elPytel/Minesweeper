@@ -12,6 +12,8 @@ DEBUG = True
 MIN_FREE = 10
 MAX_UNKNOWN = 18
 
+# Generu je vsechny mozne kombinace
+# uklada znitrni stav a na pozadani vytvori nasledujici kombinaci
 class Kombination:
 	def __init__ (self, lenght=0, number=0):
 		self.number_of_elements = number
@@ -57,7 +59,7 @@ class Kombination:
 		
 		return ret
 	
-	# vrazi true, pokud existuje dalsi prvek	
+	# vraci true, pokud existuje dalsi prvek	
 	def MakeBigger (self):
 		self.position = self.position +1
 		return self.PositionToKombination()
@@ -72,7 +74,7 @@ class Kombination:
 				kombination.append(MINE)
 		return kombination
 	
-	# zvenci volana funkce	
+	# z venku volana funkce	
 	def Next (self):
 		if self.MakeBigger() == False:
 			return None
@@ -98,7 +100,7 @@ class Player:
 			board.append(row)
 		return board
 	
-	# nakopuje prazdne pozice do vlastni datove struktury
+	# nakopiruje prazdne pozice do vlastni datove struktury
 	def CopyFree (self):
 		for y in range(self.Y):
 			for x in range(self.X):
@@ -256,7 +258,7 @@ class Player:
 			board.append(row)
 		return board
 		
-	# porovna zda obsahuje na kritickych pozicichstejna cisla, jsou tedy ekvivalentni
+	# porovna zda obsahuje na kritickych pozicich stejna cisla, jsou tedy ekvivalentni
 	def BoardsAreMatch (self, template, board, Y, X):
 		ret = True
 		for y in range(Y):
@@ -320,7 +322,7 @@ class Player:
 				return True
 		return False
 	
-	# vrati souradnice vsechspojenych pozic s jejich obsahem
+	# vrati souradnice vsech spojenych pozic s jejich obsahem
 	# cisla, nezname pozice, i miny
 	def FloodFill (self, coord):
 		y = coord[0]
@@ -365,7 +367,7 @@ class Player:
 	# mohl by si zaznamavat v kolika pripadech tam ta mina byla. Po te zahrat na pozici s nejnizsi pravdepodobnosti.
 	def FindValidCombinations (self, data):
 		#data = [Y_size, X_size, min_y, min_x, sandbox, unknown_coords, mine_coords]
-		Y_size = data[0] 
+		Y_size = data[0]
 		X_size = data[1]
 		min_y = data[2]
 		min_x = data[3]
@@ -581,7 +583,7 @@ class Player:
 		self.board = board
 		self.CopyFree()
 		
-		# odsrtrani jiz odhalena pole z self.next_to_clear
+		# odstrani jiz odhalena pole z self.next_to_clear
 		self.RemoveUncovered()
 		
 		# musi hledat nove pozice
@@ -651,11 +653,6 @@ class Player:
 					print(board[y][x], end='')
 			print()
 	
-"""	
-	# jsou to validni souradnice?
-	def IsBoard (self, y, x):
-		if (y >= 0 and y < self.Y and x >= 0 and x < self.X):
-			return True
-		return False
+"""
 END
 """

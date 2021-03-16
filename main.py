@@ -6,6 +6,8 @@ import Game
 import time
 import AI
 
+TIME = 1
+
 number = 25
 X = 16
 Y = 8
@@ -33,12 +35,14 @@ while game.IsEnd() == False:
 		print("ERROR: invalid move!")
 		break
 	game.Print()
-	time.sleep(1)
+	time.sleep(TIME)
 
 print(" ---Game end ---")
 print(" AI", "eploded!" if game.IsExploded() else "won!")
 game.Print()
 
 """
+Filtrování zbytečných polí ještě před ořezem.
+Výpočet hodnot pole jen na těch relevantních místech.
 END
 """

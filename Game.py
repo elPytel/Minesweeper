@@ -89,18 +89,20 @@ class Game:
 	
 	def IsExploded (self):
 		return self.exploded
-		
+	
+	# Pro predani safe dat hraci
 	def GetBoard (self):
 		return copy.deepcopy(self.board)
 	
+	# Validuje hracuv tah
 	def IsValidMove (self, move):
 		if move == None or len(move) != 2:
 			return False
 		y = move[0]
 		x = move[1]
-		if self.IsBoard(y, x) == False:
+		if self.IsBoard(y, x) == False:			# je na v hernim poli?
 			return False
-		if self.board[y][x] == UNKNOWN:
+		if self.board[y][x] == UNKNOWN:			# dosud neodhalene?
 			return True
 		return False
 			
