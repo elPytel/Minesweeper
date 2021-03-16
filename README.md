@@ -2,4 +2,4 @@
 
 Hra hledání min v příkazové řádce.
 
-Obsahuje i poměrně komplexniho algoritmus bota pro hrani teto hry.
+Obsahuje i poměrně komplexniho algoritmus bota pro hrani této hry.
