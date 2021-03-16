@@ -10,7 +10,7 @@ MINE = -4
 DEBUG = True
 # nastaveni kombinaci
 MIN_FREE = 10
-MAX_UNKNOWN = 250
+MAX_UNKNOWN = 18
 
 class Kombination:
 	def __init__ (self, lenght=0, number=0):
@@ -47,7 +47,8 @@ class Kombination:
 		if self.number_of_elements == 2:
 			binary = bin(self.position).replace("0b", "")
 			for i in range(len(binary)):
-				self.array[i] = int(binary[i])
+				index = self.lenght +i -len(binary)
+				self.array[index] = int(binary[i])
 			if self.IsLast(binary):
 				ret = False
 		else:
@@ -412,19 +413,21 @@ class Player:
 			
 			if 0 and DEBUG:
 				Player.PrintBoard(board)
-				#input()
+				print("Kombinace: ", komb)
+				input()
 			
 			# porovnat s originalem
 			if self.BoardsAreMatch(sandbox, board, Y_size, X_size):
 				if DEBUG:
 					Player.PrintBoard(board)
-					input()
+					print("Kombinace: ", komb)
+					#input()
 				
 				# pri uplne shode zaznamenat polohu min, ktere sousedi puvodne odhalenymi cisli.
 				for i in range(len(unknown_coords)):
 					if unknown_coords[i][2] == MINE:
-						ret_coords[i][2] += 1
-				
+						ret_coords[i][2] = ret_coords[i][2] +1
+			
 		return ret_coords
 	
 	# pokusi se to umlatit pres kombinace
@@ -434,9 +437,6 @@ class Player:
 		coords = self.FindUnknown()
 		if DEBUG:
 			print("Unknown coords:", coords)
-		if len(coords) > self.max_unknown:
-			print("Prilis mnoho moznych kombinaci.")
-			return None
 		
 		# Z ni spousti floodfill, ktery obsahuje neznama pole, miny a konci na cislech. Do vyhledavani pridava i cisla, ktera maji miny mimo jiz prohledanou oblast. Vrati sekvenci souradnic poli k vykopirovani
 		area_coords = self.FloodFill(coords[0])
@@ -474,6 +474,11 @@ class Player:
 				# pokud sousedi s cislem, tak neni jeho hodnota irelevantni
 				if len(self.FindNumbersAround(y, x)) > 0:
 					unknown_coords.append(coord)
+		
+		if len(unknown_coords) > self.max_unknown:
+			print("Prilis mnoho moznych kombinaci.")
+			return None
+		
 		if DEBUG:
 			Player.PrintBoard(sandbox)
 		
@@ -484,6 +489,7 @@ class Player:
 		combinations = self.FindValidCombinations(data)
 		if DEBUG:
 			print("Kombinace min:", combinations)
+			input()	
 		
 		# najde nejnizsi vyskyt min mezi vsemi neznamimi poli
 		min_number = combinations[0][2]		# default
@@ -503,11 +509,19 @@ class Player:
 		else: 
 			# TODO
 			# tady se to da jiste nejak optimalizovat
-			for coord in combinations:
-				if coord[2] == min_number:
-					y = coord[0]
-					x = coord[1]
-					self.next_to_clear.append([y,x])
+			trehold = 1
+			if min_number > trehold:
+				coord = random.choice(combinations)
+				y = coord[0]
+				x = coord[1]
+				self.next_to_clear.append([y,x])
+			
+			else:
+				for coord in combinations:
+					if coord[2] == min_number:
+						y = coord[0]
+						x = coord[1]
+						self.next_to_clear.append([y,x])
 		
 	def RandomMove (self):
 		valid = False
