@@ -6,7 +6,7 @@ import Game
 import time
 import AI
 
-number = 20
+number = 25
 X = 16
 Y = 8
 

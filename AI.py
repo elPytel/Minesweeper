@@ -146,7 +146,19 @@ class Player:
 			if self.IsBoard(self.Y, self.X, yn, xn) and self.located_mines[yn][xn] == MINE:
 				coord.append([yn, xn])
 		return coord
-	
+		
+	# najde pozice s prilehlimy cisli
+	def FindNumbersAround(self, y, x):
+		coord = []
+		vector = [[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1]]
+		for v in vector:
+			yn = y +v[0]
+			xn = x +v[1]
+			if self.IsBoard(self.Y, self.X, yn, xn) and self.board[yn][xn] != UNKNOWN:
+				if self.board[yn][xn] >= FREE:
+					coord.append([yn, xn])
+		return coord
+		
 	# oznaci kde jsou miny
 	def FindMines (self):
 		for y in range(self.Y):
@@ -346,6 +358,74 @@ class Player:
 				print("searched:", searched)
 				print("unsearched:",unsearched)
 		return searched
+		
+	# vyzkousi dosadit vsechny kombinace
+	# zaznamena si vsechny mozne validni kombinace a vybere si ty pozice, ktere v zadnem z pripadu neobsahovaly minu.
+	# mohl by si zaznamavat v kolika pripadech tam ta mina byla. Po te zahrat na pozici s nejnizsi pravdepodobnosti.
+	def FindValidCombinations (self, data):
+		#data = [Y_size, X_size, min_y, min_x, sandbox, unknown_coords, mine_coords]
+		Y_size = data[0] 
+		X_size = data[1]
+		min_y = data[2]
+		min_x = data[3]
+		sandbox = data[4]
+		unknown_coords = data[5]
+		mine_coords = data[6]
+		
+		# navratova hodnota
+		ret_coords = copy.deepcopy(unknown_coords)
+		# nastavi pocet nalezenych min na nulu
+		for coord in ret_coords:
+			coord[2] = 0
+		
+		# vytvorit kombinace min pro tyto pozice (0-n min)
+		kombination = Kombination(len(unknown_coords), 2)
+		while (True != False):
+			# vytvori nove pokusne pole 
+			board = self.MakeFreeBoard(Y_size, X_size)
+			# nakopiruje zname miny
+			for coord in mine_coords:
+				y = coord[0]
+				x = coord[1]
+				value = coord[2]
+				board[y-min_y][x-min_x] = value
+			
+			# posune se na dalsi kombinaci
+			komb = kombination.Next()
+			if komb == None:		# vyzkouseli jsme vsechny kombinace
+				print("Konec kombinacím!")
+				break
+			# zmeni obsah unknown na kombinaci
+			for i in range(len(unknown_coords)):
+				coord = unknown_coords[i]
+				coord[2] = komb[i]
+			
+			# nakopiruje kombinaci na pozice
+			for coord in unknown_coords:
+				y = coord[0]
+				x = coord[1]
+				value = coord[2]
+				board[y-min_y][x-min_x] = value
+			
+			# vyplni okolni cisla, vygeneruje novou desku
+			self.CalculateNumbers(board)
+			
+			if 0 and DEBUG:
+				Player.PrintBoard(board)
+				#input()
+			
+			# porovnat s originalem
+			if self.BoardsAreMatch(sandbox, board, Y_size, X_size):
+				if DEBUG:
+					Player.PrintBoard(board)
+					input()
+				
+				# pri uplne shode zaznamenat polohu min, ktere sousedi puvodne odhalenymi cisli.
+				for i in range(len(unknown_coords)):
+					if unknown_coords[i][2] == MINE:
+						ret_coords[i][2] += 1
+				
+		return ret_coords
 	
 	# pokusi se to umlatit pres kombinace
 	def SolveByTry (self):
@@ -391,62 +471,43 @@ class Player:
 				mine_coords.append(coord)
 			# oznacit vsechny nezname pozice
 			if value == UNKNOWN:
-				unknown_coords.append(coord)
+				# pokud sousedi s cislem, tak neni jeho hodnota irelevantni
+				if len(self.FindNumbersAround(y, x)) > 0:
+					unknown_coords.append(coord)
 		if DEBUG:
 			Player.PrintBoard(sandbox)
 		
-		match = False
 		# vytvorit kombinace min pro tyto pozice (0-n min)
-		kombination = Kombination(len(unknown_coords), 2)
-		while (match != True):
-			# vytvori nove pokusne pole 
-			board = self.MakeFreeBoard(Y_size, X_size)
-			# nakopiruje zname miny
-			for coord in mine_coords:
-				y = coord[0]
-				x = coord[1]
-				value = coord[2]
-				board[y-min_y][x-min_x] = value
-			
-			# posune se na dalsi kombinaci
-			komb = kombination.Next()
-			if komb == None:		# vyzkouseli jsme vsechny kombinace
-				print("Nenalezen validni kombinace.")
-				break
-			# zmeni obsah unknown na kombinaci
-			for i in range(len(unknown_coords)):
-				coord = unknown_coords[i]
-				coord[2] = komb[i]
-			
-			# nakopiruje kombinaci na pozice
-			for coord in unknown_coords:
-				y = coord[0]
-				x = coord[1]
-				value = coord[2]
-				board[y-min_y][x-min_x] = value
-			
-			# vyplni okolni cisla, vygeneruje novou desku
-			self.CalculateNumbers(board)
-			
-			if 0 and DEBUG:
-				Player.PrintBoard(board)
-				#input()
-			
-			# porovnat s originalem
-			match = self.BoardsAreMatch(sandbox, board, Y_size, X_size)
-			# pri uplne shode zaznamenat polohu min, ktere sousedi puvodne odhalenymi cisli.
-			# TODO 
-			if match == True:
-				if DEBUG:
-					Player.PrintBoard(board)
-					input()
-				ret_coords = []
-				for coord in unknown_coords:
-					if coord[2] == MINE:
-						ret_coords.append(coord)
-				return ret_coords
+		# pole kombinations obsahuje souradnice neznamych pozic a pocet vyskytu min.
 		
-		return None
+		data = [Y_size, X_size, min_y, min_x, sandbox, unknown_coords, mine_coords]
+		combinations = self.FindValidCombinations(data)
+		if DEBUG:
+			print("Kombinace min:", combinations)
+		
+		# najde nejnizsi vyskyt min mezi vsemi neznamimi poli
+		min_number = combinations[0][2]		# default
+		max_number = 0
+		for coord in combinations:
+			if coord[2] < min_number:
+				min_number = coord[2]
+			elif coord[2] > max_number:
+				max_number = coord[2]
+				
+		if max_number == 0:
+			# pokud ve vsech pripadech tam mina nebyla, tak tyto pozice zaradi na listinu next.
+			for coord in combinations:
+				y = coord[0]
+				x = coord[1]
+				self.next_to_clear.append([y,x])
+		else: 
+			# TODO
+			# tady se to da jiste nejak optimalizovat
+			for coord in combinations:
+				if coord[2] == min_number:
+					y = coord[0]
+					x = coord[1]
+					self.next_to_clear.append([y,x])
 		
 	def RandomMove (self):
 		valid = False
