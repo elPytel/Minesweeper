@@ -8,43 +8,74 @@ FREE = 0
 MINE = -4
 
 DEBUG = True
+# nastaveni kombinaci
+MIN_FREE = 10
+MAX_UNKNOWN = 250
 
 class Kombination:
-	def __init__ (self, lenght, number):
+	def __init__ (self, lenght=0, number=0):
 		self.number_of_elements = number
 		self.lenght = lenght
-		self.position = self.Array(lenght)
-		
+		self.Reset()
+	
+	# vytvori pole zadane delky	
 	def Array (self, lenght):
 		array = []
 		for i in range(lenght):
 			array.append(0)
 		return array
 		
-	def Set (lenght, number):
+	def Reset (self):
+		self.position = -1
+		self.array = self.Array(self.lenght)
+		
+	def Set (self, lenght, number):
 		self.lenght = lenght
 		self.number_of_elements = number
-		self.position = self.Array(lenght)
+		self.Reset()
+	
+	# ukoncivaci test	
+	def IsLast (self, binary):
+		ret = False
+		# kombinaci same miny prohlasi za posledni a ukonci se
+		if binary == self.lenght*'1':
+			ret = True
+		return ret
 		
-	def Reset (self):
-		self.position = 0
-		self.position = self.Array(lenght)
+	def PositionToKombination (self):
+		ret = True
+		if self.number_of_elements == 2:
+			binary = bin(self.position).replace("0b", "")
+			for i in range(len(binary)):
+				self.array[i] = int(binary[i])
+			if self.IsLast(binary):
+				ret = False
+		else:
+			print("ERROR, not implemented")
+			ret = False
 		
-	#def MakeBigger (self):
-		#TODO
+		return ret
+	
+	# vrazi true, pokud existuje dalsi prvek	
+	def MakeBigger (self):
+		self.position = self.position +1
+		return self.PositionToKombination()
 		
+	# specificka funkce AI_MINY
 	def TransformToMines (self):
 		kombination = []
 		for number in self.array:
-			if number == FREE:
+			if number == 0:
 				kombination.append(FREE)
 			elif number == 1:
 				kombination.append(MINE)
 		return kombination
-		
+	
+	# zvenci volana funkce	
 	def Next (self):
-		self.MakeBigger()
-		return TransformToMines()
+		if self.MakeBigger() == False:
+			return None
+		return self.TransformToMines()
 
 class Player:
 	def __init__ (self, y, x):
@@ -53,7 +84,8 @@ class Player:
 		self.Y = y
 		self.X = x
 		self.next_to_clear = []
-		
+		self.min_free = MIN_FREE	# od jakeho poctu jiz ma smysl spustit flood fill
+		self.max_unknown = MAX_UNKNOWN
 		self.located_mines = self.GenerateBoard()
 		
 	def GenerateBoard (self):
@@ -65,6 +97,7 @@ class Player:
 			board.append(row)
 		return board
 	
+	# nakopuje prazdne pozice do vlastni datove struktury
 	def CopyFree (self):
 		for y in range(self.Y):
 			for x in range(self.X):
@@ -72,6 +105,7 @@ class Player:
 					if self.board[y][x] == FREE:
 						self.located_mines[y][x] = FREE
 		
+	# kotroluje zda nechce hrat na jiz odkryte prazdne pozice
 	def RemoveUncovered (self):
 		#for coord in self.next_to_clear:
 		i = 0
@@ -85,31 +119,35 @@ class Player:
 			else:
 				i = i +1
 	
-	def IsBoard (self, y, x):
-		if (y >= 0 and y < self.Y and x >= 0 and x < self.X):
+	# jsou to validni souradnice?
+	def IsBoard (self, Y, X, y, x):
+		if (y >= 0 and y < Y and x >= 0 and x < X):
 			return True
 		return False
-		
+	
+	# vrati souradnice prazdnych okolnich poli v self.board
 	def FindUnknownAround(self, y, x):
-		coord = []
+		coords = []
 		vector = [[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1]]
 		for v in vector:
 			yn = y +v[0]
 			xn = x +v[1]
-			if self.IsBoard(yn, xn) and self.board[yn][xn] == UNKNOWN:
-				coord.append([yn, xn])
-		return coord
+			if self.IsBoard(self.Y, self.X, yn, xn) and self.board[yn][xn] == UNKNOWN:
+				coords.append([yn, xn])
+		return coords
 		
+	# najde pozice s prilehlimy minami
 	def FindMinesAround(self, y, x):
 		coord = []
 		vector = [[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1]]
 		for v in vector:
 			yn = y +v[0]
 			xn = x +v[1]
-			if self.IsBoard(yn, xn) and self.located_mines[yn][xn] == MINE:
+			if self.IsBoard(self.Y, self.X, yn, xn) and self.located_mines[yn][xn] == MINE:
 				coord.append([yn, xn])
 		return coord
 	
+	# oznaci kde jsou miny
 	def FindMines (self):
 		for y in range(self.Y):
 			for x in range(self.X):
@@ -123,13 +161,15 @@ class Player:
 					# pocet neznamych poli je stejny jako pocet min
 					if unknown_arounds_number == self.board[y][x]:
 						print("Nasel jsem vsechny sousedni miny.")
+						print(self.board[y][x])
 						self.board[y][x] = FREE
 						self.located_mines[y][x] = FREE
 						for coord in unknown_arounds_coord:
 							yn = coord[0]
 							xn = coord[1]
 							self.located_mines[yn][xn] = MINE
-			
+	
+	# najde prazdne pozice k dalsimu tahu
 	def FindNext (self):
 		for y in range(self.Y):
 			for x in range(self.X):
@@ -151,33 +191,261 @@ class Player:
 							if not coord in self.next_to_clear:
 								self.next_to_clear.append(coord)
 	
-	def SolveByTry (self):
-		#TODO
-		# Rozdelit na podsektory
-		# hleda neznamoou pozici
-		"""
-		for y in range(self.Y):
-			for x in range(self.X):
-		"""	
-		# z ni cpousti floodfill, ktery obsahuje neznama pole, miny a konci na cislech
-		# do vyhledavani pridava i cisla, ktera maji miny mimo jiz prohledanou oblast
-		
-		# nakopirovat podsektory i nalezenymi minami do vlstniho sendboxu, zaznamenat posunuti vyrezu
-		sandbox = []
-		
-		# oznacit vsechny nezname pozice
-		coords = []
-		Y = 0
-		X = 0
+	# najde pozice daneho typu a vrati jejich souradnice
+	def Find (board, attribute):
+		Y = len(board)
+		X = len(board[0])
+		coord = []
 		for y in range(Y):
 			for x in range(X):
-				if sandbox[y][x] == UNKNOWN:
-					coords.append([y,x])
+				if board[y][x] == attribute:
+					coord.append([y, x, attribute])
+		return coord
+		
+	# najde nezname pozice v self.board
+	def FindUnknown (self):
+		coord = []
+		for y in range(self.Y):
+			for x in range(self.X):
+				if self.board[y][x] == UNKNOWN and self.located_mines[y][x] != MINE:
+					coord.append([y, x])
+		return coord
+				
+	# najde okrajove souradnice pro oriznuti vybraneho vyctu souradnic
+	def FindCropp (self, coords):
+		min_y = self.Y 
+		max_y = 0 
+		min_x = self.X
+		max_x = 0
+		for coord in coords:
+			y = coord[0]
+			x = coord[1]
+			if min_y > y:
+				min_y = y
+			elif max_y < y:
+				max_y = y
+				
+			if min_x > x:
+				min_x = x
+			elif max_x < x:
+				max_x = x
+			
+		cropp = [min_y, max_y, min_x, max_x]
+		return cropp
+		
+	# vytvori pole zadanych rozmeru a vyplni FREE
+	def MakeFreeBoard (self, Y, X):
+		board = []
+		for y in range(Y):
+			row = []
+			for x in range(X):
+				row.append(FREE)
+			board.append(row)
+		return board
+		
+	# porovna zda obsahuje na kritickych pozicichstejna cisla, jsou tedy ekvivalentni
+	def BoardsAreMatch (self, template, board, Y, X):
+		ret = True
+		for y in range(Y):
+			for x in range(X):
+				if template[y][x] != None and template[y][x] > FREE:
+					if template[y][x] != board[y][x]: 
+						ret = False
+						return ret
+		return ret
+		
+	# spocita miny prilehle k danemu poly
+	def CountMines (self, board, y, x):
+		Y = len(board)
+		X = len(board[0])
+		mines = 0
+		vector = [[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1]]
+		for v in vector:
+			yn = y +v[0]
+			xn = x +v[1]
+			if self.IsBoard(Y, X, yn, xn) and board[yn][xn] == MINE:
+				#print("mine found!")
+				mines = mines +1
+		#print(mines)
+		return mines
+		
+	# vypocte cisla min v poly
+	def CalculateNumbers (self, board):
+		Y = len(board)
+		X = len(board[0])
+		for y in range(Y):
+			for x in range(X):
+				if board[y][x] == FREE:
+					board[y][x] = self.CountMines(board, y, x)
+	
+	# rozhodne zda ji ma flood fill prohledavat
+	def IsQualifiedToAppend (self, start, to):
+		ret = False
+		# from
+		y = start[0]
+		x = start[1]
+		# to
+		yn = to[0]
+		xn = to[1]
+		
+		from_place = self.board[y][x]
+		to_place = self.board[yn][xn]
+		if from_place == UNKNOWN:		# pokud jde z neznemo pozice
+			if to_place != FREE:
+				ret = True
+		elif from_place > FREE: 		# pokud jde z cisla
+			if to_place == UNKNOWN:
+				ret = True
+		else:
+			ret = False
+		return ret
+	
+	# testovani zda obsahuje dane souradnice
+	def IsIn (what, where):
+		for item in where:
+			if item[0] == what[0] and item[1] == what[1]:
+				return True
+		return False
+	
+	# vrati souradnice vsechspojenych pozic s jejich obsahem
+	# cisla, nezname pozice, i miny
+	def FloodFill (self, coord):
+		y = coord[0]
+		x = coord[1]
+		if DEBUG:
+			print("Spoustim flood fill, seed:", y, x)
+				
+		searched = []
+		unsearched = [[y,x, None]]
+		while len(unsearched) != 0:
+			coord = unsearched.pop(0)
+			vector = [[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1]]
+			for v in vector:
+				yn = coord[0] +v[0]
+				xn = coord[1] +v[1] 
+				if 0 and DEBUG:
+					print("Next place - y:", yn, "	x:", xn)
+				
+				in_board = self.IsBoard(self.Y, self.X, yn, xn)
+				not_searched = not Player.IsIn([yn,xn], searched)
+				if in_board and not_searched:
+					if 0 and DEBUG:
+						print("valid")
 					
+					not_unsearched = not Player.IsIn([yn,xn], unsearched)
+					valid_to_add = self.IsQualifiedToAppend([y,x], [yn,xn])
+					if not_unsearched and valid_to_add:
+						place = self.board[yn][xn]
+						if place == UNKNOWN and self.located_mines[yn][xn] == MINE:
+							place = MINE
+						unsearched.append([yn, xn, place])
+				
+			# zaradi mezi prohledane
+			searched.append(coord)
+			if 0 and DEBUG:
+				print("searched:", searched)
+				print("unsearched:",unsearched)
+		return searched
+	
+	# pokusi se to umlatit pres kombinace
+	def SolveByTry (self):
+		# Rozdelit na podsektory
+		# hleda neznamou pozici
+		coords = self.FindUnknown()
+		if DEBUG:
+			print("Unknown coords:", coords)
+		if len(coords) > self.max_unknown:
+			print("Prilis mnoho moznych kombinaci.")
+			return None
+		
+		# Z ni spousti floodfill, ktery obsahuje neznama pole, miny a konci na cislech. Do vyhledavani pridava i cisla, ktera maji miny mimo jiz prohledanou oblast. Vrati sekvenci souradnic poli k vykopirovani
+		area_coords = self.FloodFill(coords[0])
+		
+		# vytvorit vyrez
+		# cropp = [min_y, max_y, min_x, max_x]
+		cropp = self.FindCropp(area_coords) 
+		min_y = cropp[0]
+		max_y = cropp[1]
+		min_x = cropp[2]
+		max_x = cropp[3]
+		if DEBUG:
+			print("Cropp: y:", min_y, max_y, "x:", min_x, max_x)
+		
+		# alokovani pameti
+		Y_size = max_y - min_y +1
+		X_size = max_x - min_x +1
+		sandbox = self.MakeFreeBoard(Y_size, X_size)
+		print("Y,X:",len(sandbox), len(sandbox[0]))
+			
+		# nakopirovat podsektory i s nalezenymi minami do vlastniho sendboxu, posune podle vyrezu
+		mine_coords = []
+		unknown_coords = []
+		for coord in area_coords:
+			y = coord[0]
+			x = coord[1]
+			value = coord[2]
+			#print(y-min_y, x-min_x)
+			sandbox[y-min_y][x-min_x] = value
+			# oznaci vsechny zname miny
+			if value == MINE:
+				mine_coords.append(coord)
+			# oznacit vsechny nezname pozice
+			if value == UNKNOWN:
+				unknown_coords.append(coord)
+		if DEBUG:
+			Player.PrintBoard(sandbox)
+		
+		match = False
 		# vytvorit kombinace min pro tyto pozice (0-n min)
-		# vyplnit okolni cisla
-		# porovnat s originalem
-		# pri uplne shode zaznamenat polohu min
+		kombination = Kombination(len(unknown_coords), 2)
+		while (match != True):
+			# vytvori nove pokusne pole 
+			board = self.MakeFreeBoard(Y_size, X_size)
+			# nakopiruje zname miny
+			for coord in mine_coords:
+				y = coord[0]
+				x = coord[1]
+				value = coord[2]
+				board[y-min_y][x-min_x] = value
+			
+			# posune se na dalsi kombinaci
+			komb = kombination.Next()
+			if komb == None:		# vyzkouseli jsme vsechny kombinace
+				print("Nenalezen validni kombinace.")
+				break
+			# zmeni obsah unknown na kombinaci
+			for i in range(len(unknown_coords)):
+				coord = unknown_coords[i]
+				coord[2] = komb[i]
+			
+			# nakopiruje kombinaci na pozice
+			for coord in unknown_coords:
+				y = coord[0]
+				x = coord[1]
+				value = coord[2]
+				board[y-min_y][x-min_x] = value
+			
+			# vyplni okolni cisla, vygeneruje novou desku
+			self.CalculateNumbers(board)
+			
+			if 0 and DEBUG:
+				Player.PrintBoard(board)
+				#input()
+			
+			# porovnat s originalem
+			match = self.BoardsAreMatch(sandbox, board, Y_size, X_size)
+			# pri uplne shode zaznamenat polohu min, ktere sousedi puvodne odhalenymi cisli.
+			# TODO 
+			if match == True:
+				if DEBUG:
+					Player.PrintBoard(board)
+					input()
+				ret_coords = []
+				for coord in unknown_coords:
+					if coord[2] == MINE:
+						ret_coords.append(coord)
+				return ret_coords
+		
 		return None
 		
 	def RandomMove (self):
@@ -202,7 +470,7 @@ class Player:
 					for v in vector:
 						yn = y +v[0]
 						xn = x +v[1]
-						if self.IsBoard(yn, xn) and self.board[yn][xn] == UNKNOWN:
+						if self.IsBoard(self.Y, self.X, yn, xn) and self.board[yn][xn] == UNKNOWN:
 							if sandbox[yn][xn] != UNKNOWN:
 								sandbox[yn][xn] = sandbox[yn][xn] + self.board[y][x]/unknown_arounds_number
 		print(sandbox)
@@ -247,7 +515,8 @@ class Player:
 			self.FindNext()		# najde nova volna pole
 		
 		# porad jsme nic nenasli
-		if len(self.next_to_clear) == 0:
+		number_free = len(Player.Find(self.board, FREE))
+		if len(self.next_to_clear) == 0 and number_free > self.min_free:
 			self.SolveByTry()
 			
 		# porad jsme nic nenasli
@@ -289,6 +558,29 @@ class Player:
 				else:
 					print(self.located_mines[y][x], end='')
 			print()
-"""
+			
+	def PrintBoard(board):
+		Y = len(board)
+		X = len(board[0])
+		
+		print(" --- Board ---")
+		for y in range(Y):
+			for x in range(X):
+				if board[y][x] == UNKNOWN:
+					print("#", end='')
+				elif board[y][x] == FREE:
+					print("_", end='')
+				elif board[y][x] == MINE:
+					print("x", end='')
+				else:
+					print(board[y][x], end='')
+			print()
+	
+"""	
+	# jsou to validni souradnice?
+	def IsBoard (self, y, x):
+		if (y >= 0 and y < self.Y and x >= 0 and x < self.X):
+			return True
+		return False
 END
 """

@@ -3,8 +3,6 @@
 import random
 import copy
 
-#class Board:
-	
 """
 1-8	pocet min
 0	prazdne pole, odhalene

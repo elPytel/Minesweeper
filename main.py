@@ -33,7 +33,7 @@ while game.IsEnd() == False:
 		print("ERROR: invalid move!")
 		break
 	game.Print()
-	time.sleep(2)
+	time.sleep(1)
 
 print(" ---Game end ---")
 print(" AI", "eploded!" if game.IsExploded() else "won!")
